@@ -1,0 +1,56 @@
+---
+title: "sst"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+library(tidyverse)
+library(janitor)
+library(ggExtra)
+
+```
+
+\#Read in Data from Aqua Modis
+
+```{r}
+raw_sst <- read_csv(here("/Users", "eisaguirre", "github", "SST", "data", "erdMWsstd3day_LonPM180_8348_2acc_27f9.csv"))
+
+
+```
+
+# Remove Alt column
+
+```{r}
+
+sst <- raw_sst[-c(2)] 
+  
+clean_sst <- sst[-c(1),]
+
+final_sst <- clean_sst %>% 
+  mutate(data.frame(longitude = as.numeric(clean_sst$longitude))) %>% 
+  mutate(data.frame(latitude = as.numeric(clean_sst$latitude)))
+
+
+
+
+
+```
+
+```{r}
+
+ggplot(final_sst, aes(y=latitude, x=longitude)) +
+  geom_raster(aes(fill = sst), show.legend = F, interpolate = T) +
+  scale_fill_viridis_d(option = "plasma") +
+  theme_minimal()
+  
+  
+  
+
+  
+
+```
+
+\`\`\`
