@@ -36,6 +36,9 @@ mut_sst <- clean_sst %>%
   mutate(data.frame(longitude = as.numeric(clean_sst$longitude))) %>% 
   mutate(data.frame(latitude = as.numeric(clean_sst$latitude))) %>% 
   mutate(data.frame(sst = as.numeric(clean_sst$sst)))
+
+final_sst <- mut_sst %>% 
+  mutate(sst = (sst * (9/5) + 32 ))
   
 
 
@@ -43,16 +46,20 @@ mut_sst <- clean_sst %>%
 
 # plot
 ```{r}
-ggplot(mut_sst, aes(y=latitude, x=longitude)) +
-  geom_raster(aes(fill = sst), show.legend = T, interpolate = T) +
+ggplot(final_sst, aes(y=latitude, x=longitude)) +
+  geom_raster(aes(fill = sst), 
+              show.legend = T, 
+              interpolate = T, 
+              hjust = 1, 
+              vjust = 1) +
   scale_fill_viridis_c(option = "plasma") +
   theme_light() +
   labs(x = "Longitude",
        y = "Latitude",
        color = "",
        fill = "Sea Surface 
-Temperature (C)") +
-  theme(panel.grid = element_line(T)) +
+Temperature (F)") +
+  theme(panel.grid = element_line(F)) +
   scale_x_continuous(breaks = c(-120.5, -120, -119.5, -119))
   
 
