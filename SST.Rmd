@@ -49,9 +49,11 @@ ggplot(mut_sst, aes(y=latitude, x=longitude)) +
   theme_light() +
   labs(x = "Longitude",
        y = "Latitude",
-       color = "") +
-  theme(legend.title = element_text("Sea Surface Temperature (C)"),
-        panel.grid = element_line(T))
+       color = "",
+       fill = "Sea Surface 
+Temperature (C)") +
+  theme(panel.grid = element_line(T)) +
+  scale_x_continuous(breaks = c(-120.5, -120, -119.5, -119))
   
 
 
