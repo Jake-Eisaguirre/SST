@@ -10,6 +10,7 @@ library(here)
 library(tidyverse)
 library(janitor)
 library(ggExtra)
+library(patchwork)
 
 
 ```
@@ -17,7 +18,7 @@ library(ggExtra)
 # Read in Data from Aqua Modis
 
 ```{r}
-raw_sst <- read_csv(here("/Users", "eisaguirre", "github", "SST", "data", "erdMWsstd3day_LonPM180_0c10_2206_7f5c.csv"))
+raw_sst <- read_csv(here("/Users", "eisaguirre", "github", "SST", "data", "SST.csv"))
 
 
 
@@ -46,7 +47,7 @@ final_sst <- mut_sst %>%
 
 # plot
 ```{r}
-ggplot(final_sst, aes(y=latitude, x=longitude)) +
+b <- ggplot(final_sst, aes(y=latitude, x=longitude)) +
   geom_raster(aes(fill = sst), 
               show.legend = T, 
               interpolate = T, 
@@ -56,10 +57,11 @@ ggplot(final_sst, aes(y=latitude, x=longitude)) +
   theme_light() +
   labs(x = "Longitude",
        y = "Latitude",
-       color = "",
+       title = "3 Day Composite",
        fill = "Sea Surface 
 Temperature (F)") +
-  theme(panel.grid = element_line(F)) +
+  theme(panel.grid = element_line(F),
+        legend.position = "bottom") +
   scale_x_continuous(breaks = c(-120.5, -120, -119.5, -119))
   
 
@@ -68,9 +70,46 @@ Temperature (F)") +
   
   
   
-
   
 
 ```
+```{r}
+raw_chloro <- read_csv(here("/Users", "eisaguirre", "github", "SST", "data", "Chloro.csv"))
 
+```
+
+```{r}
+
+chloro <- raw_chloro[-c(2)] 
+  
+clean_chloro <- chloro[-c(1),] 
+
+mut_chloro <- clean_chloro %>% 
+  mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
+  mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
+  mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll)))
+
+```
+
+```{r}
+
+a <- ggplot(mut_chloro, aes(y=latitude, x=longitude)) +
+  geom_raster(aes(fill = chlorophyll), 
+              show.legend = T, 
+              interpolate = T, 
+              hjust = 1, 
+              vjust = 1) +
+  scale_fill_viridis_c(option = "turbo") +
+  theme_light() +
+  labs(x = "Longitude",
+       y = "",
+       fill = "Chlorophyll
+(mg m^-3)") +
+  theme(panel.grid = element_line(F),
+        legend.position = "bottom") +
+  scale_x_continuous(breaks = c(-120.5, -120, -119.5, -119))
+
+b+a
+  
+```  
 
