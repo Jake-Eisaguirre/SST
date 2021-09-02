@@ -13,6 +13,7 @@ library(ggExtra)
 library(patchwork)
 
 
+
 ```
 
 # Read in Data from Aqua Modis
@@ -36,7 +37,8 @@ clean_sst <- sst[-c(1),]
 mut_sst <- clean_sst %>% 
   mutate(data.frame(longitude = as.numeric(clean_sst$longitude))) %>% 
   mutate(data.frame(latitude = as.numeric(clean_sst$latitude))) %>% 
-  mutate(data.frame(sst = as.numeric(clean_sst$sst)))
+  mutate(data.frame(sst = as.numeric(clean_sst$sst))) %>% 
+  filter(sst > 0)
 
 final_sst <- mut_sst %>% 
   mutate(sst = (sst * (9/5) + 32 ))
@@ -47,13 +49,13 @@ final_sst <- mut_sst %>%
 
 # plot
 ```{r}
-b <- ggplot(final_sst, aes(y=latitude, x=longitude)) +
+sst_plot <- ggplot(final_sst, aes(y=latitude, x=longitude)) +
   geom_raster(aes(fill = sst), 
               show.legend = T, 
               interpolate = T, 
               hjust = 1, 
               vjust = 1) +
-  scale_fill_viridis_c(option = "plasma") +
+  scale_fill_viridis_c(option = "plasma", begin = 0) +
   theme_light() +
   labs(x = "Longitude",
        y = "Latitude",
@@ -61,8 +63,14 @@ b <- ggplot(final_sst, aes(y=latitude, x=longitude)) +
        fill = "Sea Surface 
 Temperature (F)") +
   theme(panel.grid = element_line(F),
-        legend.position = "bottom") +
-  scale_x_continuous(breaks = c(-120.5, -120, -119.5, -119))
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "grey70"),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  scale_x_continuous(breaks = c(-120.5, -120.25, -120, -119.75, -119.5, -119.25, -119), 
+                     expand = c(0,0)) +
+  scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5),
+                                        expand = c(0,0))
+  
   
 
 
@@ -73,6 +81,8 @@ Temperature (F)") +
   
 
 ```
+
+
 ```{r}
 raw_chloro <- read_csv(here("/Users", "eisaguirre", "github", "SST", "data", "Chloro.csv"))
 
@@ -84,16 +94,21 @@ chloro <- raw_chloro[-c(2)]
   
 clean_chloro <- chloro[-c(1),] 
 
-mut_chloro <- clean_chloro %>% 
+final_chloro <- clean_chloro %>% 
   mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
   mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
-  mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll)))
+  mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>% 
+  filter(chlorophyll < 5 )
+
+
+#final_chloro <- mut_chloro[!(mut_chloro$chlorophyll>3),]
+
 
 ```
 
 ```{r}
 
-a <- ggplot(mut_chloro, aes(y=latitude, x=longitude)) +
+chloro_plot <- ggplot(final_chloro, aes(y=latitude, x=longitude)) +
   geom_raster(aes(fill = chlorophyll), 
               show.legend = T, 
               interpolate = T, 
@@ -106,10 +121,15 @@ a <- ggplot(mut_chloro, aes(y=latitude, x=longitude)) +
        fill = "Chlorophyll
 (mg m^-3)") +
   theme(panel.grid = element_line(F),
-        legend.position = "bottom") +
-  scale_x_continuous(breaks = c(-120.5, -120, -119.5, -119))
-
-b+a
+        panel.background = element_rect(fill = "grey70"),
+        legend.position = "bottom",
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  scale_x_continuous(breaks = c(-120.5, -120.25, -120, -119.75, -119.5, -119.25, -119), 
+                     expand = c(0,0)) +
+  scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5), 
+                                expand = c(0,0))
+  
+sst_plot + chloro_plot
   
 ```  
 
