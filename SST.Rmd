@@ -32,10 +32,10 @@ library(RColorBrewer)
 ```{r}
 require("rerddap")
 ## base URL does not need to given because it is the default one
-three_day_sst <- info('erdMWsstd8day_LonPM180')
+three_day_sst <- info('erdMWsstd3day_LonPM180')
 three_day_sst
 
-raw_sst <- griddap('erdMWsstd8day_LonPM180',
+raw_sst <- griddap('erdMWsstd3day_LonPM180',
  time = c('last','last'),
  latitude = c(31.75, 35.0),
  longitude = c(-121.5, -116.5),
@@ -43,10 +43,10 @@ raw_sst <- griddap('erdMWsstd8day_LonPM180',
 
 
 
-three_day_chloro <- info('erdMWchla8day_LonPM180')
+three_day_chloro <- info('erdMWchla3day_LonPM180')
 three_day_chloro
 
-raw_chloro <- griddap('erdMWchla8day_LonPM180',
+raw_chloro <- griddap('erdMWchla3day_LonPM180',
  time = c('last','last'),
  latitude = c(31.75, 35.0),
  longitude = c(-121.5, -116.5),
@@ -65,6 +65,10 @@ cha <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SS
   filter(!NAME %in% c("Santa Catalina", "San Clemente"))
 
 ca <- ne_countries(country = "united states of america", scale = "large", returnclass = "sf")
+
+mpa <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>% 
+  mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
+  filter(Study_Regi == "SCSR")
 
 
 
@@ -195,7 +199,7 @@ r_sst <- as.data.frame(r_sst)
 r_sst <- r_sst[c('longitude', 'latitude', 'sst')]
 
 
-ras_sst <- rasterFromXYZ(r_sst, crs = "+proj=longlat +ellps=WGS84 +datum=WGS84")
+ras_sst <- rasterFromXYZ(r_sst, crs = 4269)
 
 num_sst <- as.numeric(r_sst$sst)
 
@@ -206,7 +210,7 @@ r_chl <- as.data.frame(r_chl)
 
 r_chl <- r_chl[c('longitude', 'latitude', 'chlorophyll')]
 
-ras_chl <- rasterFromXYZ(r_chl, crs = "+proj=longlat +ellps=WGS84 +datum=WGS84" )
+ras_chl <- rasterFromXYZ(r_chl, crs = 4269 )
 
 
 sst_pal <- colorNumeric(palette =colorspace::sequential_hcl(11,
@@ -217,8 +221,9 @@ chl_pal <- colorNumeric(palette =colorspace::sequential_hcl(11,
 
 
 app <- leaflet() %>%
-  addPolygons(data = cha, color = 'black', opacity = 1, weight = 2) %>% 
-  addPolygons(data = ca, color = 'black', opacity = 1, weight = 2) %>% 
+  addPolygons(data = cha, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
+  addPolygons(data = ca, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
+  addPolygons(data = mpa, group = "MPA Status", color = "red") %>% 
   addProviderTiles("Esri.OceanBasemap") %>%
   addRasterImage(x = ras_sst, colors = sst_pal, opacity = 0.7, group = "Sea Surface Temp") %>%
   addRasterImage(x = ras_chl, colors = chl_pal, opacity = 0.7, group = "Chlorophyll") %>% 
@@ -264,11 +269,13 @@ app <- leaflet() %>%
   addMarkers(lng=-119.525, lat=32.388, 
                    popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46047>
                    Tanner Bank Buoy Data</a>", group = "Buoys") %>%
-  addLegend(data = r_sst, pal = sst_pal, title = 'Sea Surface Temp', position = "bottomright", values = ~sst, opacity = 1, group = "Sea Surface Temp") %>% 
-  addLegend(data = r_chl, pal = chl_pal, title = 'Chlorophyll', position = "bottomright", values = ~chlorophyll, opacity = 1, group = "Chlorophyll") %>% 
+  addLegend(data = r_sst, pal = sst_pal, title = 'Sea Surface Temp', position = "bottomright", values = ~sst, 
+            opacity = 1, group = "Sea Surface Temp") %>% 
+  addLegend(data = r_chl, pal = chl_pal, title = 'Chlorophyll', position = "bottomright", 
+            values = ~chlorophyll, opacity = 1, group = "Chlorophyll") %>% 
   addLayersControl(
     baseGroups = c("Sea Surface Temp", "Chlorophyll"),
-    overlayGroups = c("Buoys"),
+    overlayGroups = c("Buoys", "MPA Status"),
     options = layersControlOptions(collapsed = FALSE)) %>% 
    htmlwidgets::onRender("
     function(el, x) {
@@ -283,7 +290,7 @@ app <- leaflet() %>%
       updateLegend();
       this.on('baselayerchange', e => updateLegend());
     }") %>% 
-  setView(lng = -119.200336, lat = 33.408464, zoom = 8)
+  setView(lng = -119.200336, lat = 33.808464, zoom = 8.5)
 
 
 app
