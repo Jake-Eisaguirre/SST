@@ -8,7 +8,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(here)
 library(tidyverse)
-library(janitor)
 library(ggExtra)
 library(patchwork)
 library(gridExtra)
@@ -16,6 +15,13 @@ library(rerddapXtracto)
 library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
+library(raster)
+library(leaflet)
+library(fasterize)
+library(rnoaa)
+library(htmlwidgets)
+library(RColorBrewer)
+
 
 
 
@@ -26,27 +32,25 @@ library(rnaturalearthdata)
 ```{r}
 require("rerddap")
 ## base URL does not need to given because it is the default one
-three_day_sst <- info('erdMWsstd1day_LonPM180')
+three_day_sst <- info('erdMWsstd8day_LonPM180')
 three_day_sst
 
-raw_sst <- griddap('erdMWsstd1day_LonPM180',
- time = c('2021-08-22','2021-09-02'),
- latitude = c(33.1125, 34.9),
- longitude = c(-120.69999999999999, -118.75),
+raw_sst <- griddap('erdMWsstd8day_LonPM180',
+ time = c('last','last'),
+ latitude = c(31.75, 35.0),
+ longitude = c(-121.5, -116.5),
  fmt = "csv")
 
 
 
-three_day_chloro <- info('erdMWchla1day_LonPM180')
+three_day_chloro <- info('erdMWchla8day_LonPM180')
 three_day_chloro
 
-raw_chloro <- griddap('erdMWchla1day_LonPM180',
- time = c('2021-08-22','2021-09-02'),
- latitude = c(33.1125, 34.9),
- longitude = c(-120.69999999999999, -118.75),
+raw_chloro <- griddap('erdMWchla8day_LonPM180',
+ time = c('last','last'),
+ latitude = c(31.75, 35.0),
+ longitude = c(-121.5, -116.5),
  fmt = "csv")
-
-
 
 
 ```
@@ -60,8 +64,7 @@ cha <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SS
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(!NAME %in% c("Santa Catalina", "San Clemente"))
 
-ca <- ne_countries(scale = "medium", returnclass = "sf")
-
+ca <- ne_countries(country = "united states of america", scale = "large", returnclass = "sf")
 
 
 
@@ -85,7 +88,8 @@ mut_sst <- clean_sst %>%
   filter(sst > 0)
 
 final_sst <- mut_sst %>% 
-  mutate(sst = (sst * (9/5) + 32 ))
+  mutate(sst = (sst * (9/5) + 32 )) %>% 
+  mutate(sst = (sst - 3))
   
 
 
@@ -115,24 +119,15 @@ Temperature (F)") +
                      expand = c(0,0)) +
   scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5),
                                         expand = c(0,0)) +
-  geom_sf(data = cha, fill = "grey30")
-  
-  
+  geom_sf(data = cha, color = "black", fill = "grey60") +
+  geom_sf(data = ca, color = "black", fill = "grey60") +
+  coord_sf(xlim = c(-120.69999999999999, -118.75), ylim = c(33.1125, 34.9), expand = FALSE) 
 
 
-  
-  
-  
-  
   
 
 ```
 
-
-```{r}
-#raw_chloro <- read_csv(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SST", "SST", "data", "Chloro.csv"))
-
-```
 
 ```{r}
 
@@ -144,10 +139,8 @@ final_chloro <- clean_chloro %>%
   mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
   mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
   mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>% 
-  filter(chlorophyll < 5 )
+  filter(chlorophyll < 15 )
 
-
-#final_chloro <- mut_chloro[!(mut_chloro$chlorophyll>3),]
 
 
 ```
@@ -179,8 +172,12 @@ chloro_plot <- ggplot() +
   scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5), 
                                 expand = c(0,0), 
                      position = "right") +
-  geom_sf(data = cha, fill = "grey30") #+
-  #geom_sf(data = ca, fill = "grey20")
+  geom_sf(data = cha, color = "black", fill = "grey60") +
+  geom_sf(data = ca, color = "black", fill = "grey60") +
+  coord_sf(xlim = c(-120.69999999999999, -118.75), ylim = c(33.1125, 34.9), expand = FALSE)
+  
+  
+
   
 
   
@@ -188,4 +185,115 @@ chloro_plot <- ggplot() +
 grid.arrange(sst_plot, chloro_plot, ncol=2)
   
 ```  
+
+```{r}
+# sst Raster
+r_sst <- final_sst[-c(1)]
+
+r_sst <- as.data.frame(r_sst)
+
+r_sst <- r_sst[c('longitude', 'latitude', 'sst')]
+
+
+ras_sst <- rasterFromXYZ(r_sst, crs = "+proj=longlat +ellps=WGS84 +datum=WGS84")
+
+num_sst <- as.numeric(r_sst$sst)
+
+# Chloro Raster
+r_chl <- final_chloro[-c(1)]
+
+r_chl <- as.data.frame(r_chl)
+
+r_chl <- r_chl[c('longitude', 'latitude', 'chlorophyll')]
+
+ras_chl <- rasterFromXYZ(r_chl, crs = "+proj=longlat +ellps=WGS84 +datum=WGS84" )
+
+
+sst_pal <- colorNumeric(palette =colorspace::sequential_hcl(11,
+  h = c(-100, 100), c = c(60, 100), l = c(15, 95), power = c(2, 0.9)), domain = r_sst$sst)
+
+chl_pal <- colorNumeric(palette =colorspace::sequential_hcl(11,
+  h = c(300, 75), c = c(35, 95), l = c(15, 90), power = c(0.8, 1.2)), domain = r_chl$chlorophyll)
+
+
+app <- leaflet() %>%
+  addPolygons(data = cha, color = 'black', opacity = 1, weight = 2) %>% 
+  addPolygons(data = ca, color = 'black', opacity = 1, weight = 2) %>% 
+  addProviderTiles("Esri.OceanBasemap") %>%
+  addRasterImage(x = ras_sst, colors = sst_pal, opacity = 0.7, group = "Sea Surface Temp") %>%
+  addRasterImage(x = ras_chl, colors = chl_pal, opacity = 0.7, group = "Chlorophyll") %>% 
+  addMarkers(lng=-120.47, lat=34.273, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46054>
+                   West Buoy Data</a>", group = "Buoys") %>% 
+  addMarkers(lng=-119.839, lat=34.241, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46053>
+                   East Buoy Data</a>", group = "Buoys") %>% 
+  addMarkers(lng=-119.044, lat=33.758, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46025>
+                   Santa Monica Basin Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-119.565, lat=33.769, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46251>
+                   Santa Cruz Basin Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-120.213, lat=33.677, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46069>
+                   South Santa Rosa Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-118.641, lat=33.860, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46221>
+                   Santa Monica Bay Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-118.317, lat=33.618, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46222>
+                   San Pedro Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-118.181, lat=33.576, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46253>
+                   San Pedro South Buoy Data</a>", group = "Buoys") %>% 
+  addMarkers(lng=-117.472, lat=33.178, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46224>
+                   Oceanside Offshore Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-117.391, lat=32.933, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46225>
+                   Torrey Pines Outer Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-117.501, lat=32.752, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46258>
+                   Mission Bay West Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-117.425, lat=32.517, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46232>
+                   Point Loma South Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-118.052, lat=32.499, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46086>
+                   San Clemente Basin Buoy Data</a>", group = "Buoys") %>%
+  addMarkers(lng=-119.525, lat=32.388, 
+                   popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46047>
+                   Tanner Bank Buoy Data</a>", group = "Buoys") %>%
+  addLegend(data = r_sst, pal = sst_pal, title = 'Sea Surface Temp', position = "bottomright", values = ~sst, opacity = 1, group = "Sea Surface Temp") %>% 
+  addLegend(data = r_chl, pal = chl_pal, title = 'Chlorophyll', position = "bottomright", values = ~chlorophyll, opacity = 1, group = "Chlorophyll") %>% 
+  addLayersControl(
+    baseGroups = c("Sea Surface Temp", "Chlorophyll"),
+    overlayGroups = c("Buoys"),
+    options = layersControlOptions(collapsed = FALSE)) %>% 
+   htmlwidgets::onRender("
+    function(el, x) {
+      var updateLegend = function () {
+          var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+
+          document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+          document.querySelectorAll('.legend').forEach(l => {
+            if (l.children[0].children[0].innerText == selectedGroup) l.hidden=false;
+          });
+      };
+      updateLegend();
+      this.on('baselayerchange', e => updateLegend());
+    }") %>% 
+  setView(lng = -119.200336, lat = 33.408464, zoom = 8)
+
+
+app
+
+saveWidget(app, file= "app.html", selfcontained = F)
+
+
+
+
+
+```
+
 
