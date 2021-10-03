@@ -1,10 +1,15 @@
 ---
-title: "sst"
-output: html_document
+title: "Fish Finder"
+output: 
+  html_document:
+    toc: true 
+    toc_float: true
+    code_folding: hide
+  
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include = FALSE, collapse = TRUE, class.source = 'fold-hide'}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 library(here)
 library(tidyverse)
@@ -28,14 +33,14 @@ library(RColorBrewer)
 ```
 
 
-# Read in SST and Chloro from website
+# Read in SST and Chloro from Aqua Modis Sat
 ```{r}
 require("rerddap")
 ## base URL does not need to given because it is the default one
-three_day_sst <- info('erdMWsstd3day_LonPM180')
-three_day_sst
+#three_day_sst <- info('erdMWsstd1day_LonPM180')
+#three_day_sst
 
-raw_sst <- griddap('erdMWsstd3day_LonPM180',
+raw_sst <- griddap('erdMWsstd8day_LonPM180',
  time = c('last','last'),
  latitude = c(31.75, 35.0),
  longitude = c(-121.5, -116.5),
@@ -43,20 +48,17 @@ raw_sst <- griddap('erdMWsstd3day_LonPM180',
 
 
 
-three_day_chloro <- info('erdMWchla3day_LonPM180')
-three_day_chloro
+#three_day_chloro <- info('erdMWchla1day_LonPM180')
+#three_day_chloro
 
-raw_chloro <- griddap('erdMWchla3day_LonPM180',
+raw_chloro <- griddap('erdMWchla8day_LonPM180',
  time = c('last','last'),
  latitude = c(31.75, 35.0),
  longitude = c(-121.5, -116.5),
  fmt = "csv")
-
-
 ```
 
-# Read in Data from Aqua Modis
-
+# Read in Shape Files
 ```{r}
 
 
@@ -66,7 +68,8 @@ cha <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SS
 
 ca <- ne_countries(country = "united states of america", scale = "large", returnclass = "sf")
 
-mpa <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>% 
+mpa <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", 
+                    "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>%   
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(Study_Regi == "SCSR")
 
@@ -77,8 +80,7 @@ mpa <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SS
 
 ```
 
-# clean data
-
+# Clean SST Data
 ```{r}
 
 sst <- raw_sst[-c(2)] 
@@ -99,40 +101,40 @@ final_sst <- mut_sst %>%
 
 ```
 
-# plot
+
 ```{r}
-sst_plot <- ggplot() +
-  geom_raster(data = final_sst, aes(y=latitude, x=longitude, fill = sst), 
-              show.legend = T, 
-              interpolate = T, 
-              hjust = 1, 
-              vjust = 1) +
-  scale_fill_viridis_c(option = "plasma", begin = 0) +
-  theme_light() +
-  labs(x = "Longitude",
-       y = "Latitude",
-       #title = "3 Day Composite",
-       fill = "Sea Surface 
-Temperature (F)") +
-  theme(panel.grid = element_line(F),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "grey70"),
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
-        plot.margin = unit(c(0,0,0,0), "inches")) +
-  scale_x_continuous(breaks = c(-120.5, -120.25, -120, -119.75, -119.5, -119.25, -119), 
-                     expand = c(0,0)) +
-  scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5),
-                                        expand = c(0,0)) +
-  geom_sf(data = cha, color = "black", fill = "grey60") +
-  geom_sf(data = ca, color = "black", fill = "grey60") +
-  coord_sf(xlim = c(-120.69999999999999, -118.75), ylim = c(33.1125, 34.9), expand = FALSE) 
+# #sst_plot <- ggplot() +
+#   geom_raster(data = final_sst, aes(y=latitude, x=longitude, fill = sst), 
+#               show.legend = T, 
+#               interpolate = T, 
+#               hjust = 1, 
+#               vjust = 1) +
+#   scale_fill_viridis_c(option = "plasma", begin = 0) +
+#   theme_light() +
+#   labs(x = "Longitude",
+#        y = "Latitude",
+#        #title = "3 Day Composite",
+#        fill = "Sea Surface 
+# Temperature (F)") +
+#   theme(panel.grid = element_line(F),
+#         legend.position = "bottom",
+#         panel.background = element_rect(fill = "grey70"),
+#         axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+#         plot.margin = unit(c(0,0,0,0), "inches")) +
+#   scale_x_continuous(breaks = c(-120.5, -120.25, -120, -119.75, -119.5, -119.25, -119), 
+#                      expand = c(0,0)) +
+#   scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5),
+#                                         expand = c(0,0)) +
+#   geom_sf(data = cha, color = "black", fill = "grey60") +
+#   geom_sf(data = ca, color = "black", fill = "grey60") +
+#   coord_sf(xlim = c(-120.69999999999999, -118.75), ylim = c(33.1125, 34.9), expand = FALSE) 
 
 
   
 
 ```
 
-
+# Clean Chloro Data
 ```{r}
 
 chloro <- raw_chloro[-c(2)] 
@@ -150,46 +152,46 @@ final_chloro <- clean_chloro %>%
 ```
 
 ```{r}
-
-chloro_plot <- ggplot() +
-  geom_raster(data = final_chloro, aes(y=latitude, x=longitude, fill = chlorophyll), 
-              show.legend = T, 
-              interpolate = T, 
-              hjust = 1, 
-              vjust = 1) +
-  scale_fill_viridis_c(option = "turbo") +
-  theme_light() +
-  labs(x = "Longitude",
-       y = "",
-       fill = "Chlorophyll
-(mg m^-3)") +
-  theme(panel.grid = element_line(F),
-        panel.background = element_rect(fill = "grey70"),
-        legend.position = "bottom",
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
-        axis.title.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        plot.margin = unit(c(0,0.8,0,0), "inches")) +
-  scale_x_continuous(breaks = c(-120.5, -120.25, -120, -119.75, -119.5, -119.25, -119), 
-                     expand = c(0,0)) +
-  scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5), 
-                                expand = c(0,0), 
-                     position = "right") +
-  geom_sf(data = cha, color = "black", fill = "grey60") +
-  geom_sf(data = ca, color = "black", fill = "grey60") +
-  coord_sf(xlim = c(-120.69999999999999, -118.75), ylim = c(33.1125, 34.9), expand = FALSE)
-  
-  
-
-  
-
-  
-
-grid.arrange(sst_plot, chloro_plot, ncol=2)
+# 
+# chloro_plot <- ggplot() +
+#   geom_raster(data = final_chloro, aes(y=latitude, x=longitude, fill = chlorophyll), 
+#               show.legend = T, 
+#               interpolate = T, 
+#               hjust = 1, 
+#               vjust = 1) +
+#   scale_fill_viridis_c(option = "turbo") +
+#   theme_light() +
+#   labs(x = "Longitude",
+#        y = "",
+#        fill = "Chlorophyll
+# (mg m^-3)") +
+#   theme(panel.grid = element_line(F),
+#         panel.background = element_rect(fill = "grey70"),
+#         legend.position = "bottom",
+#         axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+#         axis.title.y=element_blank(),
+#         axis.text.y=element_blank(),
+#         axis.ticks.y=element_blank(),
+#         plot.margin = unit(c(0,0.8,0,0), "inches")) +
+#   scale_x_continuous(breaks = c(-120.5, -120.25, -120, -119.75, -119.5, -119.25, -119), 
+#                      expand = c(0,0)) +
+#   scale_y_continuous(breaks = c(33.25, 33.5, 33.75, 34, 34.25, 34.5), 
+#                                 expand = c(0,0), 
+#                      position = "right") +
+#   geom_sf(data = cha, color = "black", fill = "grey60") +
+#   geom_sf(data = ca, color = "black", fill = "grey60") +
+#   coord_sf(xlim = c(-120.69999999999999, -118.75), ylim = c(33.1125, 34.9), expand = FALSE)
+#   
+#   
+# 
+#   
+# 
+#   
+# 
+# grid.arrange(sst_plot, chloro_plot, ncol=2)
   
 ```  
-
+# Create Rasters and Build `leaflet` map
 ```{r}
 # sst Raster
 r_sst <- final_sst[-c(1)]
@@ -212,7 +214,7 @@ r_chl <- r_chl[c('longitude', 'latitude', 'chlorophyll')]
 
 ras_chl <- rasterFromXYZ(r_chl, crs = 4269 )
 
-
+# Pals
 sst_pal <- colorNumeric(palette =colorspace::sequential_hcl(11,
   h = c(-100, 100), c = c(60, 100), l = c(15, 95), power = c(2, 0.9)), domain = r_sst$sst)
 
@@ -295,7 +297,7 @@ app <- leaflet() %>%
 
 app
 
-saveWidget(app, file= "app.html", selfcontained = F)
+saveWidget(app, file= "app.html", selfcontained = T)
 
 
 
