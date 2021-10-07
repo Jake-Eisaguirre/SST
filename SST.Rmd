@@ -26,6 +26,8 @@ library(fasterize)
 library(rnoaa)
 library(htmlwidgets)
 library(RColorBrewer)
+library(mapview)
+library(leafem)
 
 
 
@@ -40,22 +42,78 @@ require("rerddap")
 #three_day_sst <- info('erdMWsstd1day_LonPM180')
 #three_day_sst
 
-raw_sst <- griddap('erdMWsstd1day_LonPM180',
+# raw_sst <- griddap('erdMWsstd8day_LonPM180',
+#  time = c('last','last'),
+#  latitude = c(31.75, 35.0),
+#  longitude = c(-121.5, -116.5),
+#  fmt = "csv")
+
+
+# dataInfo <- rerddap::info('erdMWsstd3day_LonPM180')
+# parameter <- 'sst'
+# xcoord <- c(-121.1, -116.625)
+# ycoord <- c(35.1875, 30.7125)
+# tcoord <- c('last', 'last')
+# xlen <- 0.01
+# ylen <- 0.01
+# extract <- rxtracto(dataInfo, parameter = parameter, xcoord = xcoord,
+#                     ycoord = ycoord, tcoord= tcoord,
+#                     xlen = xlen, ylen = ylen)
+
+
+W_raw_sst <- griddap('erdMWsstd8day_LonPM180',
  time = c('last','last'),
- latitude = c(31.75, 35.0),
- longitude = c(-121.5, -116.5),
+ latitude = c(35.0, 31.75),
+ longitude = c(-121.5, -119),
  fmt = "csv")
 
-
+# #Sys.sleep( time = 10)
+# 
+E_raw_sst <- griddap('erdMWsstd8day_LonPM180',
+ time = c('last','last'),
+ latitude = c(35.0, 31.75),
+ longitude = c(-119, -116.5),
+ fmt = "csv")
+# 
+raw_sst <- rbind(W_raw_sst, E_raw_sst)
 
 #three_day_chloro <- info('erdMWchla1day_LonPM180')
 #three_day_chloro
 
-raw_chloro <- griddap('erdMWchla1day_LonPM180',
+#Sys.sleep( time = 10)
+
+W_raw_chloro <- griddap('erdMWchla8day_LonPM180',
  time = c('last','last'),
  latitude = c(31.75, 35.0),
- longitude = c(-121.5, -116.5),
+ longitude = c(-121.5, -119),
  fmt = "csv")
+
+# #Sys.sleep( time = 10)
+# 
+E_raw_chloro <- griddap('erdMWchla8day_LonPM180',
+ time = c('last','last'),
+ latitude = c(31.75, 35.0),
+ longitude = c(-119, -116.5),
+ fmt = "csv")
+# 
+raw_chloro <- rbind(W_raw_chloro, E_raw_chloro)
+
+# raw_chloro <- griddap('erdMWchla3day_LonPM180',
+#   time = c('last','last'),
+#   latitude = c(31.75, 35.0),
+#   longitude = c(-121.5, -116.5),
+#   fmt = "csv")
+
+
+#TOPO
+# ylim <- c(35.0, 31.75)
+# xlim <- c(-121.5, -116.6)
+# topoInfo <- rerddap::info('etopo360')
+# topo <- rxtracto(topoInfo, parameter = 'altitude', xcoord = xlim, 
+#                  ycoord = ylim, xlen = .1, ylen = .1)
+# 
+# topo <- as.data.frame(topo)
+
 ```
 
 # Read in Shape Files
@@ -66,7 +124,10 @@ cha <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SS
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(!NAME %in% c("Santa Catalina", "San Clemente"))
 
-ca <- ne_countries(country = "united states of america", scale = "large", returnclass = "sf")
+ca <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SST", "SST", 
+                   "s_11au16", "s_11au16.shp")) %>% 
+  mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
+  filter(NAME == "California")
 
 mpa <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", 
                     "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>%   
@@ -167,7 +228,7 @@ final_chloro <- clean_chloro %>%
   mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
   mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
   mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>% 
-  filter(chlorophyll < 15 )
+  filter(chlorophyll < 10 )
 
 
 
@@ -222,10 +283,9 @@ r_sst <- as.data.frame(r_sst)
 
 r_sst <- r_sst[c('longitude', 'latitude', 'sst')]
 
+ras_sst <- rasterFromXYZ(r_sst, crs ="+proj=longlat +ellps=WGS84 +datum=WGS84")
 
-ras_sst <- rasterFromXYZ(r_sst, crs = 4269)
-
-num_sst <- as.numeric(r_sst$sst)
+ras_sst
 
 # Chloro Raster
 r_chl <- final_chloro[-c(1)]
@@ -234,7 +294,8 @@ r_chl <- as.data.frame(r_chl)
 
 r_chl <- r_chl[c('longitude', 'latitude', 'chlorophyll')]
 
-ras_chl <- rasterFromXYZ(r_chl, crs = 4269 )
+ras_chl <- rasterFromXYZ(r_chl, crs = "+proj=longlat +ellps=WGS84 +datum=WGS84" )
+
 
 # Pals
 sst_pal <- colorNumeric(palette =colorspace::sequential_hcl(11,
@@ -247,19 +308,19 @@ chl_pal <- colorNumeric(palette =colorspace::sequential_hcl(11,
 
 Buoy <-makeIcon('icons8-buoy-50.png', iconWidth = 30, iconHeight = 30)
 
+  
 
-
-app <- leaflet() %>%
+app <- leaflet(options = leafletOptions(minZoom = 8.5)) %>% 
   addPolygons(data = cha, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
   addPolygons(data = ca, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
-  addPolygons(data = smr, group = "MPA Status", color = "red") %>%
-  addPolygons(data = smca, group = "MPA Status", color = "blue") %>% 
-  addPolygons(data = no_take, group = "MPA Status", color = "purple") %>% 
+  addPolygons(data = smr, group = "MPA Status", color = "red", popup = ~NAME) %>%
+  addPolygons(data = smca, group = "MPA Status", color = "blue", popup = ~NAME) %>% 
+  addPolygons(data = no_take, group = "MPA Status", color = "purple", popup = ~NAME) %>% 
   addProviderTiles("Esri.OceanBasemap") %>%
   addRasterImage(x = ras_sst, colors = sst_pal, opacity = 0.7, 
                  group = "Sea Surface Temp") %>%
   addRasterImage(x = ras_chl, colors = chl_pal, opacity = 0.7, 
-                 group = "Chlorophyll") %>% 
+                 group = "Chlorophyll") %>%
   addMarkers(lng=-120.47, lat=34.273, 
             popup="<a href =https://www.ndbc.noaa.gov/station_page.php?station=46054>
                    West Buoy Data</a>", 
@@ -332,7 +393,8 @@ app <- leaflet() %>%
             icon = Buoy) %>%
   addLegend(data = r_sst, pal = sst_pal, title = 'Sea Surface Temp', 
             position = "bottomright", values = ~sst, 
-            opacity = 1, group = "Sea Surface Temp") %>% 
+            opacity = 1, group = "Sea Surface Temp",
+            bins = 8) %>% 
   addLegend(data = r_chl, pal = chl_pal, title = 'Chlorophyll', 
             position = "bottomright", 
             values = ~chlorophyll, opacity = 1, group = "Chlorophyll") %>% 
@@ -354,13 +416,21 @@ app <- leaflet() %>%
       this.on('baselayerchange', e => updateLegend());
     }") %>% 
   setView(lng = -119.200336, lat = 33.808464, zoom = 8.5) %>% 
+  setMaxBounds(lng1 = -121.6,
+               lat1 = 35.0,
+               lng2 = -116.5,
+               lat2 = 31.75) %>% 
   addMeasure(
     position = "bottomleft",
     primaryLengthUnit = "feet",
     primaryAreaUnit = "sqfeet",
     activeColor = "#3D535D",
-    completedColor = "#7D4479")
+    completedColor = "#7D4479") %>% 
+ addMouseCoordinates()
+  
 
+
+  
   # onRender("{
   # 
 #   HTML(paste(h4(rv_location$id),
