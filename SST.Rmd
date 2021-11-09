@@ -198,7 +198,7 @@ clean_chloro <- chloro[-c(1),]
 final_chloro <- clean_chloro %>% 
   mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
   mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
-  mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>% 
+  mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>%
   filter(chlorophyll > 0 ) %>% 
   mutate(chlorophyll = abs(log(chlorophyll)))
 
