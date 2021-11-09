@@ -38,59 +38,33 @@ library(leafem)
 # Read in SST and Chloro from Aqua Modis Sat
 ```{r}
 require("rerddap")
-## base URL does not need to given because it is the default one
-#three_day_sst <- info('erdMWsstd1day_LonPM180')
-#three_day_sst
-
-# raw_sst <- griddap('erdMWsstd8day_LonPM180',
-#  time = c('last','last'),
-#  latitude = c(31.75, 35.0),
-#  longitude = c(-121.5, -116.5),
-#  fmt = "csv")
 
 
-# dataInfo <- rerddap::info('erdMWsstd3day_LonPM180')
-# parameter <- 'sst'
-# xcoord <- c(-121.1, -116.625)
-# ycoord <- c(35.1875, 30.7125)
-# tcoord <- c('last', 'last')
-# xlen <- 0.01
-# ylen <- 0.01
-# extract <- rxtracto(dataInfo, parameter = parameter, xcoord = xcoord,
-#                     ycoord = ycoord, tcoord= tcoord,
-#                     xlen = xlen, ylen = ylen)
-
-
-W_raw_sst <- griddap('erdMWsstd3day_LonPM180',
+W_raw_sst <- griddap('erdMWsstd8day_LonPM180',
  time = c('last','last'),
  latitude = c(35.0, 31.75),
  longitude = c(-121.5, -119),
  fmt = "csv")
 
-# #Sys.sleep( time = 10)
-# 
-E_raw_sst <- griddap('erdMWsstd3day_LonPM180',
+
+E_raw_sst <- griddap('erdMWsstd8day_LonPM180',
  time = c('last','last'),
  latitude = c(35.0, 31.75),
  longitude = c(-119, -116.5),
  fmt = "csv")
-# 
+
 raw_sst <- rbind(W_raw_sst, E_raw_sst)
 
-#three_day_chloro <- info('erdMWchla1day_LonPM180')
-#three_day_chloro
 
-#Sys.sleep( time = 10)
 
-W_raw_chloro <- griddap('erdMWchla3day_LonPM180',
+W_raw_chloro <- griddap('erdMWchla8day_LonPM180',
  time = c('last','last'),
  latitude = c(31.75, 35.0),
  longitude = c(-121.5, -119),
  fmt = "csv")
 
-# #Sys.sleep( time = 10)
-# 
-E_raw_chloro <- griddap('erdMWchla3day_LonPM180',
+
+E_raw_chloro <- griddap('erdMWchla8day_LonPM180',
  time = c('last','last'),
  latitude = c(31.75, 35.0),
  longitude = c(-119, -116.5),
@@ -98,21 +72,6 @@ E_raw_chloro <- griddap('erdMWchla3day_LonPM180',
 # 
 raw_chloro <- rbind(W_raw_chloro, E_raw_chloro)
 
-# raw_chloro <- griddap('erdMWchla3day_LonPM180',
-#   time = c('last','last'),
-#   latitude = c(31.75, 35.0),
-#   longitude = c(-121.5, -116.5),
-#   fmt = "csv")
-
-
-#TOPO
-# ylim <- c(35.0, 31.75)
-# xlim <- c(-121.5, -116.6)
-# topoInfo <- rerddap::info('etopo360')
-# topo <- rxtracto(topoInfo, parameter = 'altitude', xcoord = xlim, 
-#                  ycoord = ylim, xlen = .1, ylen = .1)
-# 
-# topo <- as.data.frame(topo)
 
 so_cal_bath <- marmap::getNOAA.bathy(
   lon1 = -116.5,
@@ -240,7 +199,8 @@ final_chloro <- clean_chloro %>%
   mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
   mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
   mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>% 
-  filter(chlorophyll < 15 )
+  filter(chlorophyll > 0 ) %>% 
+  mutate(chlorophyll = abs(log(chlorophyll)))
 
 
 
@@ -326,6 +286,14 @@ re_samp_chl <- resample(ras_chl, new_ras_chl, method = "bilinear")
 
 bath_ras <- rasterFromXYZ(so_cal_bath, crs = "+proj=longlat +ellps=WGS84 +datum=WGS84")
 
+new_ras_bath <- raster(xmn = -121.5,
+                      xmx = -116.5,
+                      ymn = 31.0,
+                      ymx = 35.0,
+                      res = c(0.005, 0.005))
+
+re_samp_bath <- resample(bath_ras, new_ras_bath, method = "bilinear")
+
 
 # Pals
 sst_pal <- colorNumeric(palette = colorspace::sequential_hcl(25,
@@ -346,10 +314,6 @@ Buoy <-makeIcon('icons8-buoy-50.png', iconWidth = 30, iconHeight = 30)
   
 
 app <- leaflet(options = leafletOptions(minZoom = 8.5)) %>%
-  # addMapPane("baseMap", zIndex = 370) %>% 
-  # addMapPane("shape_poly", zIndex = 380) %>% 
-  # addMapPane("res", zIndex = 390) %>% 
-  # averlayerPane("data", zIndex = 450) %>% 
   addPolygons(data = cha, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
   addPolygons(data = ca, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
   addPolygons(data = smr, group = "MPA Status", color = "red", popup = ~NAME) %>%
@@ -360,7 +324,7 @@ app <- leaflet(options = leafletOptions(minZoom = 8.5)) %>%
                  group = "Sea Surface Temp") %>%
   addRasterImage(x = re_samp_chl, colors = chl_pal, opacity = 0.7,
                  group = "Chlorophyll") %>%
-  addRasterImage(x = bath_ras, colors = bath_pal, opacity = 0.7,
+  addRasterImage(x = re_samp_bath, colors = bath_pal, opacity = 0.7,
                  group = "Bathymetry") %>% 
   addMarkers(lng=-120.47, lat=34.273, 
             popup="<a href =https://www.ndbc.noaa.gov/station_page.php?station=46054>
