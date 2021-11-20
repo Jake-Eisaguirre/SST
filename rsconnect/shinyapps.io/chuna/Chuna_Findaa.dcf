@@ -1,0 +1,14 @@
+name: Chuna_Findaa
+title: Chuna_Findaa
+username:
+account: chuna
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5168657
+bundleId: 5272960
+url: https://chuna.shinyapps.io/Chuna_Findaa/
+when: 1637385812.99559
+lastSyncTime: 1637385812.9956
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: app.html|Chloro.Rmd|ds582.zip|README.md|SST.html
