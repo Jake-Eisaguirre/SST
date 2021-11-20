@@ -38,7 +38,6 @@ library(rsconnect)
 
 # Read in SST and Chloro from Aqua Modis Sat
 ```{r}
-require("rerddap")
 
 
 W_raw_sst <- griddap('erdMWsstd3day_LonPM180',
