@@ -14,21 +14,16 @@ knitr::opts_chunk$set(echo = T)
 library(here)
 library(tidyverse)
 library(ggExtra)
-library(patchwork)
-library(gridExtra)
-library(rerddapXtracto)
-library(sf)
-library(rnaturalearth)
-library(rnaturalearthdata)
 library(raster)
 library(leaflet)
 library(fasterize)
-library(rnoaa)
 library(htmlwidgets)
 library(RColorBrewer)
 library(leafem)
 library(colorRamps)
 library(rsconnect)
+library(marmap)
+library(rerddap)
 
 
 
@@ -55,6 +50,8 @@ E_raw_sst <- griddap('erdMWsstd3day_LonPM180',
 
 raw_sst <- rbind(W_raw_sst, E_raw_sst)
 
+raw_sst <- write_csv(raw_sst, "raw_sst.csv")
+
 
 
 W_raw_chloro <- griddap('erdMWchla3day_LonPM180',
@@ -72,6 +69,9 @@ E_raw_chloro <- griddap('erdMWchla3day_LonPM180',
 # 
 raw_chloro <- rbind(W_raw_chloro, E_raw_chloro)
 
+raw_chloro <- write_csv(raw_chloro, "raw_chloro.csv")
+
+
 
 so_cal_bath <- marmap::getNOAA.bathy(
   lon1 = -116.5,
@@ -85,40 +85,37 @@ so_cal_bath <- marmap::getNOAA.bathy(
   filter(layer <= 0) %>% 
   mutate(layer = layer*-1)
 
+so_cal_bath <- write_csv(so_cal_bath, "so_cal_bath.csv")
+
 ```
 
 # Read in Shape Files
 ```{r}
 
 
-cha <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SST", "SST", "data", "shape", "channel_islands.shp")) %>% 
+cha <- read_sf(here("data", "shape", "channel_islands.shp")) %>% 
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(!NAME=="San Clemente")
 
-ca <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", "SST Code", "SST", "SST", 
-                   "s_11au16", "s_11au16.shp")) %>% 
+ca <- read_sf(here("s_11au16", "s_11au16.shp")) %>% 
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(NAME == "California")
 
-mpa <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", 
-                    "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>%   
+mpa <- read_sf(here("ds582", "ds582.shp")) %>%   
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(Study_Regi == "SCSR")
 
-smr <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", 
-                    "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>%   
+smr <- read_sf(here("ds582", "ds582.shp")) %>%   
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(Study_Regi == "SCSR") %>% 
   filter(Type %in% c("SMR", "FMR"))
 
-smca <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", 
-                    "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>%   
+smca <- read_sf(here("ds582", "ds582.shp")) %>%   
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(Study_Regi == "SCSR") %>% 
   filter(Type == "SMCA")
 
-no_take <- read_sf(here("/Users","JaketheBoss", "Documents", "Bren", 
-                    "SST Code", "SST", "SST", "ds582", "ds582.shp")) %>%   
+no_take <- read_sf(here("ds582", "ds582.shp")) %>%   
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(Study_Regi == "SCSR") %>% 
   filter(Type == "SMCA (No-Take)")
@@ -245,7 +242,7 @@ final_chloro$chlorophyll <- abs(log(final_chloro$chlorophyll))
 # grid.arrange(sst_plot, chloro_plot, ncol=2)
   
 ```  
-# Create Rasters and Build `leaflet` map
+# Create Rasters
 ```{r}
 #sst raster
 r_sst <- final_sst[-c(1)]
@@ -311,9 +308,10 @@ re_samp_bath <- resample(bath_ras, new_ras_bath, method = "bilinear") #final re-
 cropped_bath <- mask(re_samp_bath, merged_shapes_mask, inverse = T)
 
 re_samp_bath <- projectRaster(cropped_bath, crs = 4326) #final re-sampled Chloro raster
+```
 
-
-
+#color pals
+```{r}
 # Color pals for rasters
 #sst_pal <- colorNumeric(palette = colorspace::sequential_hcl(5,
   #h = c(-110, 82), c = c(61, 100), l = c(13, 100), power = c(2.45, 0.9)), domain = r_sst$sst)
@@ -335,8 +333,10 @@ sst_pal <- colorNumeric(palette = matlab.like(25), domain = r_sst$sst)
 #Buoy Icon
 Buoy <-makeIcon('icons8-buoy-50.png', iconWidth = 30, iconHeight = 30)
 
+```
 
-
+# bluild leaflet
+```{r}
 sst_leaf <- leaflet(options = leafletOptions(minZoom = 8.5)) %>%
   addPolygons(data = cha, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
   addPolygons(data = ca, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
