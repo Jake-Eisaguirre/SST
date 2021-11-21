@@ -5,10 +5,10 @@ account: chuna
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 5168657
-bundleId: 5274421
+bundleId: 5276651
 url: https://chuna.shinyapps.io/Chuna_Findaa/
-when: 1637432340.1765
-lastSyncTime: 1637432340.17652
+when: 1637517132.56386
+lastSyncTime: 1637517132.56387
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: app.html|README.md|SST.html
+ignoredFiles: app.html|ggplot.R|README.md|SST.html
