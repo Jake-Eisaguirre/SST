@@ -25,6 +25,7 @@ library(colorspace)
 library(rsconnect)
 library(rerddap)
 library(sf)
+library(rerddapXtracto)
 
 
 
@@ -34,40 +35,77 @@ library(sf)
 
 
 ```{r}
+date <- as.Date(Sys.time()) %>% 
+  paste0("T12:00:00Z") 
 
-W_raw_sst <- griddap('erdMWsstd3day_LonPM180',
- time = c('last','last'),
+past_date <- as.Date(date) -8
+
+past_date <- as.Date(past_date) %>% 
+  paste0("T12:00:00Z") 
+
+
+# W_raw_sst_3 <- griddap('erdMWsstd3day_LonPM180',
+#  time = c(past_date,'last'),
+#  latitude = c(35.0, 31.75),
+#  longitude = c(-121.5, -119),
+#  fmt = "csv")
+# 
+# 
+# E_raw_sst_3 <- griddap('erdMWsstd3day_LonPM180',
+#  time = c(past_date,'last'),
+#  latitude = c(35.0, 31.75),
+#  longitude = c(-119, -116.5),
+#  fmt = "csv")
+
+W_raw_sst <- griddap('erdMWsstd8day_LonPM180',
+ time = c(past_date,'last'),
  latitude = c(35.0, 31.75),
  longitude = c(-121.5, -119),
  fmt = "csv")
 
 
-E_raw_sst <- griddap('erdMWsstd3day_LonPM180',
- time = c('last','last'),
+E_raw_sst <- griddap('erdMWsstd8day_LonPM180',
+ time = c(past_date,'last'),
  latitude = c(35.0, 31.75),
  longitude = c(-119, -116.5),
  fmt = "csv")
 
-raw_sst <- as.data.frame(rbind(W_raw_sst, E_raw_sst))
+raw_sst <- as.data.frame(bind_rows(W_raw_sst, E_raw_sst)) %>% 
+  group_by(time, latitude, longitude) %>% 
+  mutate(sst = mean(sst))
 
 raw_sst <- write_csv(raw_sst, "raw_sst.csv")
 
 
+# W_raw_chlor_3 <- griddap('erdMWchla3day_LonPM180',
+#  time = c(past_date,'last'),
+#  latitude = c(35.0, 31.75),
+#  longitude = c(-121.5, -119),
+#  fmt = "csv")
+# 
+# E_raw_chlor_3 <- griddap('erdMWchla3day_LonPM180',
+#  time = c(past_date,'last'),
+#  latitude = c(35.0, 31.75),
+#  longitude = c(-119, -116.5),
+#  fmt = "csv")
 
-W_raw_chloro <- griddap('erdMWchla3day_LonPM180',
- time = c('last','last'),
+W_raw_chloro <- griddap('erdMWchla8day_LonPM180',
+ time = c(past_date,'last'),
  latitude = c(31.75, 35.0),
  longitude = c(-121.5, -119),
  fmt = "csv")
 
-
-E_raw_chloro <- griddap('erdMWchla3day_LonPM180',
- time = c('last','last'),
+E_raw_chloro <- griddap('erdMWchla8day_LonPM180',
+ time = c(past_date,'last'),
  latitude = c(31.75, 35.0),
  longitude = c(-119, -116.5),
  fmt = "csv")
+
+
 # 
-raw_chloro <- as.data.frame(rbind(W_raw_chloro, E_raw_chloro))
+raw_chloro <- as.data.frame(bind_rows(W_raw_chloro, E_raw_chloro)) %>% 
+  group_by(time, latitude, longitude) %>% 
+  mutate(chlorophyll = mean(chlorophyll))
 
 raw_chloro <- write_csv(raw_chloro, "raw_chloro.csv")
 
@@ -130,16 +168,16 @@ merged_shapes_mask <- bind_rows(ca, cha)
 
 clean_sst <- raw_sst[-c(2)] 
 
-mut_sst <- clean_sst %>% 
-  mutate(data.frame(longitude = as.numeric(clean_sst$longitude))) %>% 
-  mutate(data.frame(latitude = as.numeric(clean_sst$latitude))) %>% 
-  mutate(data.frame(sst = as.numeric(clean_sst$sst))) %>% 
-  na.omit()
+# mut_sst <- clean_sst %>% 
+#   mutate(data.frame(longitude = as.numeric(clean_sst$longitude))) %>% 
+#   mutate(data.frame(latitude = as.numeric(clean_sst$latitude))) %>% 
+#   mutate(data.frame(sst = as.numeric(clean_sst$sst))) %>% 
+#   na.omit()
 
-final_sst <- mut_sst %>% #final clean SST data frame
+final_sst <- raw_sst %>% #final clean SST data frame
   mutate(sst = (sst * (9/5) + 32 )) %>% 
-  mutate(sst = (sst - 3)) %>% 
-  as_data_frame()
+  mutate(sst = (sst - 5)) %>% 
+  na.omit()
 
 
 
@@ -154,16 +192,19 @@ gc()
 ```{r}
 # Clean Chloro Data
 
-clean_chloro <- raw_chloro[-c(2)] 
+final_chloro <- raw_chloro[-c(2)] 
 
-final_chloro <- clean_chloro %>% #final clean chloro data frame
-  mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
-  mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
-  mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>% 
-  na.omit() %>% 
-  as_data_frame()
+# final_chloro <- clean_chloro %>% #final clean chloro data frame
+#   mutate(data.frame(longitude = as.numeric(clean_chloro$longitude))) %>% 
+#   mutate(data.frame(latitude = as.numeric(clean_chloro$latitude))) %>% 
+#   mutate(data.frame(chlorophyll = as.numeric(clean_chloro$chlorophyll))) %>% 
+#   na.omit() %>% 
+#   as_data_frame()
 
 final_chloro$chlorophyll <- abs(log(final_chloro$chlorophyll))
+
+final_chloro <- final_chloro %>% 
+  na.omit()
 
 rm(clean_chloro, raw_chloro)
 gc()
