@@ -1,40 +1,16 @@
----
-title: "Fish Finder"
-output: 
-  html_document:
-    toc: true 
-    toc_float: true
-    code_folding: hide
-  
----
-
-```{r setup}
-
 
 library(here)
 library(tidyverse)
 library(raster)
 library(leaflet)
-library(fasterize)
-library(htmlwidgets)
 library(RColorBrewer)
 library(leafem)
 library(colorRamps)
 library(colorspace)
-library(rsconnect)
 library(rerddap)
 library(sf)
-library(rerddapXtracto)
-library(shiny)
+library(htmlwidgets)
 
-
-
-
-```
-
-
-
-```{r}
 date <- as.Date(Sys.time()) %>% 
   paste0("T12:00:00Z") 
 
@@ -58,23 +34,22 @@ past_date <- as.Date(past_date) %>%
 #  fmt = "csv")
 
 W_raw_sst <- griddap('erdMWsstd8day_LonPM180',
- time = c(past_date,'last'),
- latitude = c(35.0, 31.75),
- longitude = c(-121.5, -119),
- fmt = "csv")
+                     time = c(past_date,'last'),
+                     latitude = c(35.0, 31.75),
+                     longitude = c(-121.5, -119),
+                     fmt = "csv")
 
 
 E_raw_sst <- griddap('erdMWsstd8day_LonPM180',
- time = c(past_date,'last'),
- latitude = c(35.0, 31.75),
- longitude = c(-119, -116.5),
- fmt = "csv")
+                     time = c(past_date,'last'),
+                     latitude = c(35.0, 31.75),
+                     longitude = c(-119, -116.5),
+                     fmt = "csv")
 
 raw_sst <- as.data.frame(bind_rows(W_raw_sst, E_raw_sst)) %>% 
   group_by(time, latitude, longitude) %>% 
   mutate(sst = mean(sst))
 
-raw_sst <- write_csv(raw_sst, "raw_sst.csv")
 
 
 # W_raw_chlor_3 <- griddap('erdMWchla3day_LonPM180',
@@ -90,16 +65,16 @@ raw_sst <- write_csv(raw_sst, "raw_sst.csv")
 #  fmt = "csv")
 
 W_raw_chloro <- griddap('erdMWchla8day_LonPM180',
- time = c(past_date,'last'),
- latitude = c(31.75, 35.0),
- longitude = c(-121.5, -119),
- fmt = "csv")
+                        time = c(past_date,'last'),
+                        latitude = c(31.75, 35.0),
+                        longitude = c(-121.5, -119),
+                        fmt = "csv")
 
 E_raw_chloro <- griddap('erdMWchla8day_LonPM180',
- time = c(past_date,'last'),
- latitude = c(31.75, 35.0),
- longitude = c(-119, -116.5),
- fmt = "csv")
+                        time = c(past_date,'last'),
+                        latitude = c(31.75, 35.0),
+                        longitude = c(-119, -116.5),
+                        fmt = "csv")
 
 
 # 
@@ -107,7 +82,6 @@ raw_chloro <- as.data.frame(bind_rows(W_raw_chloro, E_raw_chloro)) %>%
   group_by(time, latitude, longitude) %>% 
   mutate(chlorophyll = mean(chlorophyll))
 
-raw_chloro <- write_csv(raw_chloro, "raw_chloro.csv")
 
 
 
@@ -117,11 +91,7 @@ so_cal_bath <- read_csv("so_cal_bath.csv")
 
 rm(E_raw_chloro, E_raw_sst, W_raw_sst, W_raw_chloro)
 gc()
-  
-```
 
-
-```{r}
 # Read in Shape Files
 
 cha <- read_sf(here("data", "shape", "channel_islands.shp")) %>% 
@@ -155,15 +125,6 @@ no_take <- read_sf(here("ds582", "ds582.shp")) %>%
 merged_shapes_mask <- bind_rows(ca, cha)
 
 
-
-
-
-
-
-
-```
-
-```{r}
 # Clean SST Data
 
 clean_sst <- raw_sst[-c(2)] 
@@ -184,12 +145,7 @@ final_sst <- raw_sst %>% #final clean SST data frame
 rm(raw_sst, clean_sst, mut_sst)
 gc()
 
-```
 
-
-
-
-```{r}
 # Clean Chloro Data
 
 final_chloro <- raw_chloro[-c(2)] 
@@ -208,11 +164,6 @@ final_chloro <- final_chloro %>%
 
 rm(clean_chloro, raw_chloro)
 gc()
-```
-
-```{r}
-# Create Rasters
-
 
 #sst raster
 r_sst <- final_sst[-c(1)]
@@ -275,10 +226,10 @@ gc()
 bath_ras <- rasterFromXYZ(so_cal_bath, crs = 4326)
 
 new_ras_bath <- raster(xmn = -121.5,
-                      xmx = -116.5,
-                      ymn = 31.0,
-                      ymx = 35.0,
-                      res = c(0.002, 0.002))
+                       xmx = -116.5,
+                       ymn = 31.0,
+                       ymx = 35.0,
+                       res = c(0.002, 0.002))
 
 
 re_samp_bath <- resample(bath_ras, new_ras_bath, method = "bilinear") #final re-sampled Bathy raster
@@ -289,38 +240,28 @@ re_samp_bath <- projectRaster(cropped_bath, crs = 4326) #final re-sampled Chloro
 
 rm(bath_ras, new_ras_bath, cropped_bath)
 gc()
-```
-
-```{r}
-
-#color pals
 
 # Color pals for rasters
 #sst_pal <- colorNumeric(palette = sequential_hcl(5,
-  #h = c(-110, 82), c = c(61, 100), l = c(13, 100), power = c(2.45, 0.9)), domain = r_sst$sst)
+#h = c(-110, 82), c = c(61, 100), l = c(13, 100), power = c(2.45, 0.9)), domain = r_sst$sst)
 
 chl_pal <- colorNumeric(palette =sequential_hcl(25,
-  h = c(300, 75), c = c(35, 95), l = c(15, 90), power = c(0.8, 1.2)), domain = r_chl$chlorophyll)
+                                                h = c(300, 75), c = c(35, 95), l = c(15, 90), power = c(0.8, 1.2)), domain = r_chl$chlorophyll)
 
 
-# rev <- rev(sequential_hcl(40,
-#   h = c(260, 220), c = c(74, 112, 39), l = c(17, 88), power = c(0, 1.3)))
-# 
-# bath_pal <- colorNumeric(palette = rev, domain = so_cal_bath$layer)
+rev <- rev(sequential_hcl(40,
+  h = c(260, 220), c = c(74, 112, 39), l = c(17, 88), power = c(0, 1.3)))
 
-
-
-sst_pal <- colorNumeric(palette = matlab.like(25), domain = r_sst$sst)
-
-
-#Buoy Icon
-Buoy <-makeIcon('icons8-buoy-50.png', iconWidth = 30, iconHeight = 30)
-
-```
-
-```{r}
-
-# bluild leaflet
+ bath_pal <- colorNumeric(palette = rev, domain = so_cal_bath$layer)
+ 
+ sst_pal <- colorNumeric(palette = matlab.like(25), domain = r_sst$sst)
+ 
+ 
+ #Buoy Icon
+ Buoy <-makeIcon('icons8-buoy-50.png', iconWidth = 30, iconHeight = 30)
+ 
+ 
+ 
 
 sst_leaf <- leaflet(options = leafletOptions(minZoom = 8.5)) %>%
   addPolygons(data = cha, color = 'black', opacity = 1, weight = 2, fill = F) %>% 
@@ -333,60 +274,60 @@ sst_leaf <- leaflet(options = leafletOptions(minZoom = 8.5)) %>%
                  group = "Sea Surface Temp") %>%
   addRasterImage(x = re_samp_chl, colors = chl_pal, opacity = 0.7,
                  group = "Chlorophyll") %>%
-  # addRasterImage(x = re_samp_bath, colors = bath_pal, opacity = 0.7,
-  #                group = "Bathymetry") %>% 
+  addRasterImage(x = re_samp_bath, colors = bath_pal, opacity = 0.7,
+                  group = "Bathymetry") %>% 
   addMarkers(lng=-120.47, lat=34.273, 
-            popup="<a href =https://www.ndbc.noaa.gov/station_page.php?station=46054>
+             popup="<a href =https://www.ndbc.noaa.gov/station_page.php?station=46054>
                    West Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>% 
+             group = "Buoys", 
+             icon = Buoy) %>% 
   addMarkers(lng=-119.839, lat=34.241, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46053>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46053>
                    East Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>% 
+             group = "Buoys", 
+             icon = Buoy) %>% 
   addMarkers(lng=-119.044, lat=33.758, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46025>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46025>
                    Santa Monica Basin Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>%
+             group = "Buoys", 
+             icon = Buoy) %>%
   addMarkers(lng=-119.565, lat=33.769, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46251>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46251>
                    Santa Cruz Basin Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>%
+             group = "Buoys", 
+             icon = Buoy) %>%
   addMarkers(lng=-120.213, lat=33.677, 
-            popup="<a href =https://www.ndbc.noaa.gov/station_page.php?station=46069>
+             popup="<a href =https://www.ndbc.noaa.gov/station_page.php?station=46069>
                    South Santa Rosa Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>%
+             group = "Buoys", 
+             icon = Buoy) %>%
   addMarkers(lng=-118.641, lat=33.860, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46221>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46221>
                    Santa Monica Bay Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>%
+             group = "Buoys", 
+             icon = Buoy) %>%
   addMarkers(lng=-118.317, lat=33.618, 
-           popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46222>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46222>
                    San Pedro Buoy Data</a>", 
-           group = "Buoys", 
-           icon = Buoy) %>%
+             group = "Buoys", 
+             icon = Buoy) %>%
   addMarkers(lng=-118.181, lat=33.576, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46253>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46253>
                    San Pedro South Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>% 
+             group = "Buoys", 
+             icon = Buoy) %>% 
   addMarkers(lng=-117.472, lat=33.178, 
-              popup="<a href=https://www.ndbc.noaa.gov/station_page.php?station=46224>
+             popup="<a href=https://www.ndbc.noaa.gov/station_page.php?station=46224>
                    Oceanside Offshore Buoy Data</a>", 
              group = "Buoys", 
              icon = Buoy) %>%
   addMarkers(lng=-117.391, lat=32.933, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46225>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46225>
                    Torrey Pines Outer Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>%
+             group = "Buoys", 
+             icon = Buoy) %>%
   addMarkers(lng=-117.501, lat=32.752, 
-              popup="<a href=https://www.ndbc.noaa.gov/station_page.php?station=46258>
+             popup="<a href=https://www.ndbc.noaa.gov/station_page.php?station=46258>
                    Mission Bay West Buoy Data</a>", 
              group = "Buoys", 
              icon = Buoy) %>%
@@ -396,31 +337,31 @@ sst_leaf <- leaflet(options = leafletOptions(minZoom = 8.5)) %>%
              group = "Buoys", 
              icon = Buoy) %>%
   addMarkers(lng=-118.052, lat=32.499, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46086>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46086>
                    San Clemente Basin Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy) %>%
+             group = "Buoys", 
+             icon = Buoy) %>%
   addMarkers(lng=-119.525, lat=32.388, 
-            popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46047>
+             popup="<a href = https://www.ndbc.noaa.gov/station_page.php?station=46047>
                    Tanner Bank Buoy Data</a>", 
-            group = "Buoys", 
-            icon = Buoy,
-            markerOptions(interactive = T, clickable = T, riseOnHover = T)) %>%
+             group = "Buoys", 
+             icon = Buoy,
+             markerOptions(interactive = T, clickable = T, riseOnHover = T)) %>%
   addLegend(data = r_sst, pal = sst_pal, title = 'Sea Surface Temp', 
             position = "bottomright", values = ~sst, 
             opacity = 1, group = "Sea Surface Temp",
             bins = 8) %>% 
-  # addLegend(data = so_cal_bath, pal = bath_pal, title = 'Bathymetry', 
-  #           position = "bottomright", 
-  #           values = ~layer, opacity = 1, group = "Bathymetry") %>%
+  addLegend(data = so_cal_bath, pal = bath_pal, title = 'Bathymetry', 
+             position = "bottomright", 
+             values = ~layer, opacity = 1, group = "Bathymetry") %>%
   addLegend(data = r_chl, pal = chl_pal, title = 'Chlorophyll', 
             position = "bottomright", 
             values = ~chlorophyll, opacity = 1, group = "Chlorophyll") %>% 
   addLayersControl(
-    baseGroups = c("Sea Surface Temp", "Chlorophyll"),
+    baseGroups = c("Sea Surface Temp", "Chlorophyll", "Bathymetry"),
     overlayGroups = c("Buoys", "MPA Status"),
     options = layersControlOptions(collapsed = FALSE)) %>% 
-   htmlwidgets::onRender("
+  onRender("
     function(el, x) {
       var updateLegend = function () {
           var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
@@ -444,52 +385,6 @@ sst_leaf <- leaflet(options = leafletOptions(minZoom = 8.5)) %>%
     primaryAreaUnit = "sqfeet",
     activeColor = "#3D535D",
     completedColor = "#7D4479") %>% 
- addMouseCoordinates()
-  
-
-#saveWidget(app, file= "app.html", selfcontained = T)
-
-
-```
-```{r}
-
-# shiny app
-
-
-library(shiny)
-ui <- fluidPage(
-  
-  titlePanel("So-Cal Fish Bite"),
-  
-  leafletOutput("sst_leaf", height = 700, width = "100%"),
-  
-  
-  
-)
-
-server <- function(input, output, session){
-  
-  #Reactive
-    sst_reactive <- reactive({
-       final_re_samp_sst
-    })
-    
-
-
-
-  #Map
-  output$sst_leaf <- renderLeaflet({
-    
-    sst_leaf 
-      
-
-    
-    })
-  
-}
-
-shinyApp(ui = ui, server = server)
-
-```
+  addMouseCoordinates()
 
 
