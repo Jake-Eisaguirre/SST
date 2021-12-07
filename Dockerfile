@@ -1,3 +1,6 @@
+
+
+
 FROM rocker/r-ver:4.1.0
 
 LABEL org.opencontainers.image.licenses="GPL-2.0-or-later" \
@@ -30,10 +33,12 @@ COPY icons8-buoy-50.png /srv/shiny-server/
 COPY SST.Rproj /srv/shiny-server/
 COPY ds582 /srv/shiny-server/ds582
 COPY s_11au16 /srv/shiny-server/s_11au16
-COPY data /srv/shiny-server/data
+COPY shape /srv/shiny-server/shape
 COPY so_cal_bath.csv srv/shiny-server/
 
 
 EXPOSE 3838
+
+
 
 CMD ["/init"]

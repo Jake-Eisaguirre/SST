@@ -94,7 +94,7 @@ gc()
 
 # Read in Shape Files
 
-cha <- read_sf(here("data", "shape", "channel_islands.shp")) %>% 
+cha <- read_sf(here("shape", "channel_islands.shp")) %>% 
   mutate(geometry = st_transform(geometry, "+proj=longlat +ellps=WGS84 +datum=WGS84")) %>% 
   filter(!NAME=="San Clemente")
 
@@ -142,7 +142,7 @@ final_sst <- raw_sst %>% #final clean SST data frame
 
 
 
-rm(raw_sst, clean_sst, mut_sst)
+rm(raw_sst, clean_sst)
 gc()
 
 
@@ -162,7 +162,7 @@ final_chloro$chlorophyll <- abs(log(final_chloro$chlorophyll))
 final_chloro <- final_chloro %>% 
   na.omit()
 
-rm(clean_chloro, raw_chloro)
+rm(raw_chloro)
 gc()
 
 #sst raster
